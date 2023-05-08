@@ -4,7 +4,7 @@
 #include <string>
 #undef main
 
-int MAX_DEPTH = 6;
+int MAX_DEPTH = 5;
 
 
 class SDL_PRINT {
@@ -85,7 +85,7 @@ public:
 
         int col = y / (SIZE_WINDOW / 8);
         int row = x / (SIZE_WINDOW / 8);
-        return { row, col};
+        return { row, col };
 
     }
 };
@@ -98,10 +98,11 @@ struct Cell {
 };
 
 struct CellStep {
-    int x;
-    int y;
+    int x = -1;
+    int y = -1;
     Cell* eatenCell;
 };
+
 
 
 
@@ -134,6 +135,7 @@ public:
                     whiteCell->type = "White";
                     whiteCell->x = j;
                     whiteCell->y = i;
+                    /*whiteCell->isQueen = true;*/
                     checkersCell.push_back(whiteCell);
                 }
                 else if (i < 3) {
@@ -141,6 +143,7 @@ public:
                     blackCell->type = "Black";
                     blackCell->x = j;
                     blackCell->y = i;
+                    /*blackCell->isQueen = true;*/
                     checkersCell.push_back(blackCell);
                 }
                 else {
@@ -154,30 +157,76 @@ public:
         }
     };
 
-    Board(std::vector<Cell*> cells, Cell* curCell, std::string currentMove, CellStep step) {
-        for (int i = 0; i < cells.size(); i++) {
-            Cell* cellPoint;
-            cellPoint->isQueen = cells[i]->isQueen;
-            cellPoint->type = cells[i]->type;
-            cellPoint->x = cells[i]->x;
-            cellPoint->y = cells[i]->y;
+    Board(std::vector<Cell*> cells, Cell* curCell, std::string currentMove, CellStep step, SDL_PRINT* sdlWrapp) {
+		try {
+			this->sdl = sdlWrapp;
+			for (int i = 0; i < cells.size(); i++) {
+				Cell* cellPoint = new Cell;
+				cellPoint->isQueen = cells[i]->isQueen;
+				cellPoint->type = cells[i]->type;
+				cellPoint->x = cells[i]->x;
+				cellPoint->y = cells[i]->y;
 
-            this->checkersCell.push_back(cellPoint);
-            if (cellPoint->x == curCell->x && cellPoint->y == curCell->y) {
-                this->currentCell = cellPoint;
-            }
+				this->checkersCell.push_back(cellPoint);
+				if (cellPoint->x == curCell->x && cellPoint->y == curCell->y) {
+					this->currentCell = cellPoint;
+				}
+			}
+			this->currentMove = currentMove;
+			if (this->currentCell && this->checkersCell[step.y * 8 + step.x]) {
+                this->switchCheckers(this->currentCell, this->checkersCell[step.y * 8 + step.x]);
+				if (step.eatenCell) {
+					/* std::cout << "Eat: " << step.eatenCell->x << ":" << step.eatenCell->y << std::endl;*/
+					this->checkersCell[step.eatenCell->y * 8 + step.eatenCell->x]->type = "Empty";
+					this->checkersCell[step.eatenCell->y * 8 + step.eatenCell->x]->isQueen = false;
+                    this->currentCell = this->checkersCell[step.y * 8 + step.x];
+                    if (this->getValidEatenStep().size() == 0) {
+                        this->switchColor();
+                        this->currentCell = nullptr;
+                    }
+                }
+                else {
+                    this->switchColor();
+                    this->currentCell = nullptr;
+                }
+
+			}
+            
+		}
+        catch(...) {
+            std::cout << "РѕС€РёР±РєР° РІ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂРµ: "  << std::endl;
         }
-        this->currentMove = currentMove;
-        if (this->currentCell) {
-            this->switchCheckers(this->currentCell, this->checkersCell[step.y * 8 + step.x]);
-        }
-        
     }
 
     ~Board() {
         this->checkersCell.clear();
         this->currentCell = nullptr;
-        delete this->sdl;
+    }
+
+    void printBoard() {
+            for (int i = 0; i < this->checkersCell.size(); i++) {
+                if (i % 8 == 0) {
+                    std::cout << std::endl;
+                }
+                char sym = '#';
+                if (this->checkersCell[i]->type == "Black") {
+                    if (this->checkersCell[i]->isQueen) {
+                        sym = 'B';
+                    }
+                    else
+                        sym = 'b';
+                }
+                else if (this->checkersCell[i]->type == "White") {
+                    if (this->checkersCell[i]->isQueen) {
+                        sym = 'W';
+                    }
+                    else
+                        sym = 'w';
+                }
+                std::cout << sym;
+            }
+            std::cout << std::endl;
+            std::cout << "==================================" << std::endl;
     }
 
     void switchColor() {
@@ -192,6 +241,7 @@ public:
     int isTheEndGame() {
         int white = 0;
         int black = 0;
+        
         for (int i = 0; i < this->checkersCell.size(); i++) {
             if (this->checkersCell[i]->type == "Black") {
                 black++;
@@ -199,6 +249,7 @@ public:
             else if (this->checkersCell[i]->type == "White") {
                 white++;
             }
+
         }
 
         if (white && black) {
@@ -211,6 +262,7 @@ public:
             return -1;
         }
     }
+
 
     void switchCheckers(Cell* first, Cell* second) {
         Cell temp;
@@ -238,7 +290,7 @@ public:
         else if (second->type == "Black" && second->y == 7) {
             second->isQueen = true;
         }
-    }
+    };
 
     void drawBoard() {
         for (int i = 0; i < checkersCell.size(); i++) {
@@ -275,13 +327,13 @@ public:
 
                 SDL_SetRenderDrawColor(sdl->renderer, 177, 163, 125, 255);
                 sdl->DrawCircleRadius(sdl->renderer, rect.x + 37, rect.y + 37, 10);
-            }
+            };
 
             if (checkersCell.at(i)->isQueen) {
                 SDL_SetRenderDrawColor(sdl->renderer, 200, 200, 125, 255);
                 sdl->DrawCircleRadius(sdl->renderer, rect.x + 37, rect.y + 37, 18);
-            }
-        }
+            };
+        };
 
         if (this->currentCell) {
 
@@ -300,12 +352,12 @@ public:
                 this->sdl->DrawCircleRadius(sdl->renderer, 75 * this->getAllValidSteps()[i].x + 37, 75 * this->getAllValidSteps()[i].y + 37, 10);
             }
 
-        }
+        };
         SDL_RenderPresent(sdl->renderer);
     };
 
     std::vector<CellStep> getValidEmptyStep() {
-     
+
         int x = this->currentCell->x;
         int y = this->currentCell->y;
 
@@ -314,11 +366,11 @@ public:
         if (!this->currentCell->isQueen) {
             if (this->currentCell->type == "White") {
 
-                //узнаем, не левая крайняя ли это точка у доски, входит ли в диапозон точек на доске
-                //для простого хода влево по диаганали
+                //СѓР·РЅР°РµРј, РЅРµ Р»РµРІР°СЏ РєСЂР°Р№РЅСЏСЏ Р»Рё СЌС‚Рѕ С‚РѕС‡РєР° Сѓ РґРѕСЃРєРё, РІС…РѕРґРёС‚ Р»Рё РІ РґРёР°РїРѕР·РѕРЅ С‚РѕС‡РµРє РЅР° РґРѕСЃРєРµ
+                //РґР»СЏ РїСЂРѕСЃС‚РѕРіРѕ С…РѕРґР° РІР»РµРІРѕ РїРѕ РґРёР°РіР°РЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x - 9 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x - 9 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x - 9 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x - 9]->type == "Empty"
                     &&
@@ -330,10 +382,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для простого хода вправо по диаганали
+                //РґР»СЏ РїСЂРѕСЃС‚РѕРіРѕ С…РѕРґР° РІРїСЂР°РІРѕ РїРѕ РґРёР°РіР°РЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x - 7 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x - 7 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x - 7 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x - 7]->type == "Empty"
                     &&
@@ -345,15 +397,15 @@ public:
                     validSteps.push_back(step);
 
                 }
-            }
+            };
 
             if (this->currentCell->type == "Black") {
 
-                //узнаем, не правая крайняя ли это точка у доски, входит ли в диапозон точек на доске
-                //для простого хода вправо по диаганали
+                //СѓР·РЅР°РµРј, РЅРµ РїСЂР°РІР°СЏ РєСЂР°Р№РЅСЏСЏ Р»Рё СЌС‚Рѕ С‚РѕС‡РєР° Сѓ РґРѕСЃРєРё, РІС…РѕРґРёС‚ Р»Рё РІ РґРёР°РїРѕР·РѕРЅ С‚РѕС‡РµРє РЅР° РґРѕСЃРєРµ
+                //РґР»СЏ РїСЂРѕСЃС‚РѕРіРѕ С…РѕРґР° РІРїСЂР°РІРѕ РїРѕ РґРёР°РіР°РЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x + 9 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x + 9 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x + 9 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x + 9]->type == "Empty"
                     &&
@@ -365,10 +417,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для простого хода влево по диаганали
+                //РґР»СЏ РїСЂРѕСЃС‚РѕРіРѕ С…РѕРґР° РІР»РµРІРѕ РїРѕ РґРёР°РіР°РЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x + 7 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x + 7 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x + 7 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x + 7]->type == "Empty"
                     &&
@@ -380,12 +432,12 @@ public:
                     validSteps.push_back(step);
                 }
             }
-        }
+        };
         if (this->currentCell->isQueen) {
             if (this->currentCell->type == "White") {
                 //==========================================//
-                //  для диагонали \
-                //                 \ вниз
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё \
+                //                 \ РІРЅРёР·
                 //                  \
 
                 for (int i = 1;
@@ -394,7 +446,7 @@ public:
                     && (y * this->BOARD_SIZE + x + i * (this->BOARD_SIZE + 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->x;
@@ -403,13 +455,13 @@ public:
                         validSteps.push_back(step);
                     }
                     else {
-                        //при не пустой клетку завершаем поиск
+                        //РїСЂРё РЅРµ РїСѓСЃС‚РѕР№ РєР»РµС‚РєСѓ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє
                         break;
                     }
                 }
                 //==========================================//
-                 //  для диагонали \
-                //                  \ вверх
+                 //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё \
+                //                  \ РІРІРµСЂС…
                 //                   \
                 
                 for (int i = 1;
@@ -418,7 +470,7 @@ public:
                     && (y * this->BOARD_SIZE + x - i * (this->BOARD_SIZE + 1) >= 0);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->x;
@@ -431,17 +483,17 @@ public:
                     }
                 }
                 //==========================================//
-                //  для диагонали   /
-                //                 / вниз
-                //                /
+                 //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё   /
+                 //                 / РІРЅРёР·
+                 //                /
 
                 for (int i = 1;
-                    x - i  >= 0 
+                    x - i >= 0
                     && i + y <= 7
                     && (y * this->BOARD_SIZE + x + i * (this->BOARD_SIZE - 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->x;
@@ -450,13 +502,13 @@ public:
                         validSteps.push_back(step);
                     }
                     else {
-                        //при не пустой клетку завершаем поиск
+                        //РїСЂРё РЅРµ РїСѓСЃС‚РѕР№ РєР»РµС‚РєСѓ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє
                         break;
                     }
                 }
                 //==========================================//
-                //  для диагонали   /
-                //                 / вверх
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё   /
+                //                 / РІРІРµСЂС…
                 //                /
 
                 for (int i = 1;
@@ -465,7 +517,7 @@ public:
                     && (y * this->BOARD_SIZE + x - i * (this->BOARD_SIZE - 1) >= 0);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->x;
@@ -481,8 +533,8 @@ public:
 
             if (this->currentCell->type == "Black") {
                 //==========================================//
-                //  для диагонали \
-                //                 \ вниз
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё \
+                //                 \ РІРЅРёР·
                 //                  \
 
                 for (int i = 1;
@@ -491,7 +543,7 @@ public:
                     && (y * this->BOARD_SIZE + x + i * (this->BOARD_SIZE + 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->x;
@@ -500,13 +552,13 @@ public:
                         validSteps.push_back(step);
                     }
                     else {
-                        //при не пустой клетку завершаем поиск
+                        //РїСЂРё РЅРµ РїСѓСЃС‚РѕР№ РєР»РµС‚РєСѓ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє
                         break;
                     }
                 }
                 //==========================================//
-                 //  для диагонали \
-                //                  \ вверх
+                 //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё \
+                //                  \ РІРІРµСЂС…
                 //                   \
                 
                 for (int i = 1;
@@ -515,7 +567,7 @@ public:
                     && (y * this->BOARD_SIZE + x - i * (this->BOARD_SIZE + 1) >= 0);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->x;
@@ -528,8 +580,8 @@ public:
                     }
                 }
                 //==========================================//
-                //  для диагонали   /
-                //                 / вниз
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё   /
+                //                 / РІРЅРёР·
                 //                /
 
                 for (int i = 1;
@@ -538,7 +590,7 @@ public:
                     && (y * this->BOARD_SIZE + x + i * (this->BOARD_SIZE - 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->x;
@@ -547,13 +599,13 @@ public:
                         validSteps.push_back(step);
                     }
                     else {
-                        //при не пустой клетку завершаем поиск
+                        //РїСЂРё РЅРµ РїСѓСЃС‚РѕР№ РєР»РµС‚РєСѓ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє
                         break;
                     }
                 }
                 //==========================================//
-                //  для диагонали   /
-                //                 / вверх
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё   /
+                //                 / РІРІРµСЂС…
                 //                /
 
                 for (int i = 1;
@@ -562,7 +614,7 @@ public:
                     && (y * this->BOARD_SIZE + x - i * (this->BOARD_SIZE - 1) >= 0);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->type == "Empty") {
                         CellStep step;
                         step.x = checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->x;
@@ -577,7 +629,7 @@ public:
             }
 
         }
-     
+
         return validSteps;
     };
 
@@ -589,10 +641,10 @@ public:
 
         if (!this->currentCell->isQueen) {
             if (this->currentCell->type == "White") {
-                //для хода, который съедает левую пешку по диагонали
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ Р»РµРІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x - 18 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x - 18 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x - 18 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x - 9]->type == "Black"
                     &&
@@ -607,10 +659,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для хода, который съедает правую пешку по диагонали
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ РїСЂР°РІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x - 14 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x - 14 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x - 14 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x - 7]->type == "Black"
                     &&
@@ -625,10 +677,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для хода, который съедает левую пешку по диагонали вниз
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ Р»РµРІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё РІРЅРёР·
                 if (y * this->BOARD_SIZE + x + 18 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x + 18 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x + 18 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x + 9]->type == "Black"
                     &&
@@ -643,10 +695,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для хода, который съедает правую пешку по диагонали
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ РїСЂР°РІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x + 14 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x + 14 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x + 14 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x + 7]->type == "Black"
                     &&
@@ -664,10 +716,10 @@ public:
             }
 
             if (this->currentCell->type == "Black") {
-                //для хода, который съедает правую пешку по диагонали
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ РїСЂР°РІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x + 18 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x + 18 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x + 18 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x + 9]->type == "White"
                     &&
@@ -682,10 +734,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для хода, который съедает левую пешку по диагонали
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ Р»РµРІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё
                 if (y * this->BOARD_SIZE + x + 14 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x + 14 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x + 14 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x + 7]->type == "White"
                     &&
@@ -700,10 +752,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для хода, который съедает правую пешку по диагонали вниз
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ РїСЂР°РІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё РІРЅРёР·
                 if (y * this->BOARD_SIZE + x - 18 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x - 18 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x - 18 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x - 9]->type == "White"
                     &&
@@ -718,10 +770,10 @@ public:
                     validSteps.push_back(step);
                 }
 
-                //для хода, который съедает левую пешку по диагонали вниз
+                //РґР»СЏ С…РѕРґР°, РєРѕС‚РѕСЂС‹Р№ СЃСЉРµРґР°РµС‚ Р»РµРІСѓСЋ РїРµС€РєСѓ РїРѕ РґРёР°РіРѕРЅР°Р»Рё РІРЅРёР·
                 if (y * this->BOARD_SIZE + x - 14 >= 0
                     &&
-                    ((y * this->BOARD_SIZE) + x - 14 <= this->BOARD_SIZE * this->BOARD_SIZE)
+                    ((y * this->BOARD_SIZE) + x - 14 < this->BOARD_SIZE * this->BOARD_SIZE)
                     &&
                     this->checkersCell[y * this->BOARD_SIZE + x - 7]->type == "White"
                     &&
@@ -740,17 +792,17 @@ public:
         if (this->currentCell->isQueen) {
             if (this->currentCell->type == "White" || this->currentCell->type == "Black") {
                 //==========================================//
-                //  для диагонали \
-                //                 \ вниз
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё \
+                //                 \ РІРЅРёР·
                 //                  \
 
                 for (int i = 1;
-                    i + x <= 6 
+                    i + x <= 6
                     && i + y <= 6
                     && (y * this->BOARD_SIZE + x + i * (this->BOARD_SIZE + 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->type == "Black" && this->currentCell->type == "White"
                         || this->checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->type == "White" && this->currentCell->type == "Black") {
                         for (int j = i + 1;
@@ -758,26 +810,30 @@ public:
                             && j + y <= 7
                             && (y * this->BOARD_SIZE + x + j * (this->BOARD_SIZE + 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                             j++) {
-                            //ищем пустую клетку
-                            int indexCheckerPos= (y * this->BOARD_SIZE + x + j * (this->BOARD_SIZE + 1));
+                            //РёС‰РµРј РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ
+                            int indexCheckerPos = (y * this->BOARD_SIZE + x + j * (this->BOARD_SIZE + 1));
                             if (this->checkersCell[indexCheckerPos]->type == "Empty") {
                                 CellStep step;
                                 step.x = this->checkersCell[indexCheckerPos]->x;
                                 step.y = this->checkersCell[indexCheckerPos]->y;
                                 step.eatenCell = this->checkersCell[indexElement + i * (this->BOARD_SIZE + 1)];
                                 validSteps.push_back(step);
-                            } else {
-                                //если встречаем не пустую клетку, то завершаем поиск, тк дальнейшей возможности сьесть нет
+                            }
+                            else {
+                                //РµСЃР»Рё РІСЃС‚СЂРµС‡Р°РµРј РЅРµ РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ, С‚Рѕ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє, С‚Рє РґР°Р»СЊРЅРµР№С€РµР№ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РЅРµС‚
                                 break;
                             }
                         }
-                        //прекращаем дальнейшие перебор, тк больше нет возможности сьесть еще пешку за раз
+                        //РїСЂРµРєСЂР°С‰Р°РµРј РґР°Р»СЊРЅРµР№С€РёРµ РїРµСЂРµР±РѕСЂ, С‚Рє Р±РѕР»СЊС€Рµ РЅРµС‚ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РµС‰Рµ РїРµС€РєСѓ Р·Р° СЂР°Р·
+                        break;
+                    }
+                    else if (this->checkersCell[indexElement + i * (this->BOARD_SIZE + 1)]->type != "Empty") {
                         break;
                     }
                 }
                 //==========================================//
-                //  для диагонали \
-                //                 \ вверх
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё \
+                //                 \ РІРІРµСЂС…
                 //                  \
 
                 for (int i = 1;
@@ -786,15 +842,15 @@ public:
                     && (y * this->BOARD_SIZE + x - i * (this->BOARD_SIZE + 1) >= 0);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
-                    if (this->checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->type == "Black" && this->currentCell->type == "White" 
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
+                    if (this->checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->type == "Black" && this->currentCell->type == "White"
                         || this->checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->type == "White" && this->currentCell->type == "Black") {
                         for (int j = i + 1;
                             x - j >= 0
                             && y - j >= 0
                             && (y * this->BOARD_SIZE + x - j * (this->BOARD_SIZE + 1) >= 0);
                             j++) {
-                            //ищем пустую клетку
+                            //РёС‰РµРј РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ
                             int indexCheckerPos = (y * this->BOARD_SIZE + x - j * (this->BOARD_SIZE + 1));
                             if (this->checkersCell[indexCheckerPos]->type == "Empty") {
                                 CellStep step;
@@ -804,17 +860,20 @@ public:
                                 validSteps.push_back(step);
                             }
                             else {
-                                //если встречаем не пустую клетку, то завершаем поиск, тк дальнейшей возможности сьесть нет
+                                //РµСЃР»Рё РІСЃС‚СЂРµС‡Р°РµРј РЅРµ РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ, С‚Рѕ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє, С‚Рє РґР°Р»СЊРЅРµР№С€РµР№ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РЅРµС‚
                                 break;
                             }
                         }
-                        //прекращаем дальнейшие перебор, тк больше нет возможности сьесть еще пешку за раз
+                        //РїСЂРµРєСЂР°С‰Р°РµРј РґР°Р»СЊРЅРµР№С€РёРµ РїРµСЂРµР±РѕСЂ, С‚Рє Р±РѕР»СЊС€Рµ РЅРµС‚ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РµС‰Рµ РїРµС€РєСѓ Р·Р° СЂР°Р·
+                        break;
+                    }
+                    else if (this->checkersCell[indexElement - i * (this->BOARD_SIZE + 1)]->type != "Empty") {
                         break;
                     }
                 }
                 //==========================================//
-                //  для диагонали   /
-                //                 / вниз
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё   /
+                //                 / РІРЅРёР·
                 //                /
 
                 for (int i = 1;
@@ -823,7 +882,7 @@ public:
                     && (y * this->BOARD_SIZE + x + i * (this->BOARD_SIZE - 1) < this->BOARD_SIZE * this->BOARD_SIZE);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->type == "Black" && this->currentCell->type == "White"
                         || this->checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->type == "White" && this->currentCell->type == "Black") {
                         for (int j = i + 1;
@@ -831,7 +890,7 @@ public:
                             && y + j <= 7
                             && (y * this->BOARD_SIZE + x + j * (this->BOARD_SIZE - 1) >= 0);
                             j++) {
-                            //ищем пустую клетку
+                            //РёС‰РµРј РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ
                             int indexCheckerPos = (y * this->BOARD_SIZE + x + j * (this->BOARD_SIZE - 1));
                             if (this->checkersCell[indexCheckerPos]->type == "Empty") {
                                 CellStep step;
@@ -841,17 +900,20 @@ public:
                                 validSteps.push_back(step);
                             }
                             else {
-                                //если встречаем не пустую клетку, то завершаем поиск, тк дальнейшей возможности сьесть нет
+                                //РµСЃР»Рё РІСЃС‚СЂРµС‡Р°РµРј РЅРµ РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ, С‚Рѕ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє, С‚Рє РґР°Р»СЊРЅРµР№С€РµР№ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РЅРµС‚
                                 break;
                             }
                         }
-                        //прекращаем дальнейшие перебор, тк больше нет возможности сьесть еще пешку за раз
+                        //РїСЂРµРєСЂР°С‰Р°РµРј РґР°Р»СЊРЅРµР№С€РёРµ РїРµСЂРµР±РѕСЂ, С‚Рє Р±РѕР»СЊС€Рµ РЅРµС‚ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РµС‰Рµ РїРµС€РєСѓ Р·Р° СЂР°Р·
+                        break;
+                    }
+                    else if (this->checkersCell[indexElement + i * (this->BOARD_SIZE - 1)]->type != "Empty") {
                         break;
                     }
                 }
                 //==========================================//
-                //  для диагонали   /
-                //                 / вверх
+                //  РґР»СЏ РґРёР°РіРѕРЅР°Р»Рё   /
+                //                 / РІРІРµСЂС…
                 //                /
 
                 for (int i = 1;
@@ -860,7 +922,7 @@ public:
                     && (y * this->BOARD_SIZE + x - i * (this->BOARD_SIZE - 1) >= 0);
                     i++) {
                     int indexElement = (y * this->BOARD_SIZE + x);
-                    //ищем на диагонали черную пешку
+                    //РёС‰РµРј РЅР° РґРёР°РіРѕРЅР°Р»Рё С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
                     if (this->checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->type == "Black" && this->currentCell->type == "White"
                         || this->checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->type == "White" && this->currentCell->type == "Black") {
                         for (int j = i + 1;
@@ -868,7 +930,7 @@ public:
                             && y - j >= 0
                             && (y * this->BOARD_SIZE + x - j * (this->BOARD_SIZE - 1) >= 0);
                             j++) {
-                            //ищем пустую клетку
+                            //РёС‰РµРј РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ
                             int indexCheckerPos = (y * this->BOARD_SIZE + x - j * (this->BOARD_SIZE - 1));
                             if (this->checkersCell[indexCheckerPos]->type == "Empty") {
                                 CellStep step;
@@ -878,11 +940,14 @@ public:
                                 validSteps.push_back(step);
                             }
                             else {
-                                //если встречаем не пустую клетку, то завершаем поиск, тк дальнейшей возможности сьесть нет
+                                //РµСЃР»Рё РІСЃС‚СЂРµС‡Р°РµРј РЅРµ РїСѓСЃС‚СѓСЋ РєР»РµС‚РєСѓ, С‚Рѕ Р·Р°РІРµСЂС€Р°РµРј РїРѕРёСЃРє, С‚Рє РґР°Р»СЊРЅРµР№С€РµР№ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РЅРµС‚
                                 break;
                             }
                         }
-                        //прекращаем дальнейшие перебор, тк больше нет возможности сьесть еще пешку за раз
+                        //РїСЂРµРєСЂР°С‰Р°РµРј РґР°Р»СЊРЅРµР№С€РёРµ РїРµСЂРµР±РѕСЂ, С‚Рє Р±РѕР»СЊС€Рµ РЅРµС‚ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё СЃСЊРµСЃС‚СЊ РµС‰Рµ РїРµС€РєСѓ Р·Р° СЂР°Р·
+                        break;
+                    }
+                    else if (this->checkersCell[indexElement - i * (this->BOARD_SIZE - 1)]->type != "Empty") {
                         break;
                     }
                 }
@@ -899,65 +964,9 @@ public:
         std::vector<CellStep> allSteps = eatenSteps.size() > 0 ? eatenSteps : emptySteps;
         return allSteps;
     }
-
-    int minMaxAlgorithm(Board* curBoard, int depth, int signFactor, int& maxValue) {
-       /* if (depth >= MAX_DEPTH) {
-            return evaluation_function(curBoard);
-        }*/
-
-        std::vector<CellStep> allStepsRecursive;
-        for (int cellInd = 0; cellInd < curBoard->checkersCell.size(); cellInd++) {
-            if (curBoard->checkersCell[cellInd]->type == "Empty" || curBoard->checkersCell[cellInd]->type != curBoard->currentMove) {
-                continue;
-            }
-
-            std::vector<CellStep> steps = curBoard->getAllValidSteps();
-            allStepsRecursive.insert(allStepsRecursive.end(), steps.begin(), steps.end());
-        }
-        for (int moveInd = 0; moveInd < allStepsRecursive.size(); moveInd++) {
-            
-
-            Board* newBoard = new Board(this->checkersCell, this->currentCell, this->currentMove, allStepsRecursive[moveInd]);
-
-            newBoard->checkersCell[allStepsRecursive[moveInd].y * 8 + allStepsRecursive[moveInd].x]->type = newBoard->currentCell->type;
-            newBoard->currentCell->type = "Empty";
-            //назначаем новую текущую клетку
-            newBoard->currentCell = newBoard->checkersCell[allStepsRecursive[moveInd].y * 8 + allStepsRecursive[moveInd].x];
-            if (allStepsRecursive[moveInd].eatenCell != nullptr) {
-                allStepsRecursive[moveInd].eatenCell->type = "Empty";
-                if (newBoard->getValidEatenStep().size() == 0) {
-                    newBoard->currentCell = nullptr;
-                    if (newBoard->currentMove == "White") {
-                        newBoard->currentMove = "Black";
-                    }
-                    else if (newBoard->currentMove == "Black") {
-                        newBoard->currentMove = "White";
-                    }
-                }
-            }
-
-            else if (allStepsRecursive[moveInd].eatenCell == nullptr) {
-                /*newBoard->currentCell->canSwitch = true;
-                newBoard->currentCell = nullptr;*/
-                if (newBoard->currentMove == "White") {
-                    newBoard->currentMove = "Black";
-                }
-                else if (newBoard->currentMove == "Black") {
-                    newBoard->currentMove = "White";
-                }
-            }
-
-            int newSignFactor = newBoard->currentMove == "White" ? 1 : 0;
-            int newValue = signFactor * minMaxAlgorithm(newBoard, depth + 1, newSignFactor, maxValue);
-            if (newValue > maxValue)
-                maxValue = newValue;
-        }
-
-        return signFactor * maxValue;
-    }
 };
 
-// оценочная функция
+// РѕС†РµРЅРѕС‡РЅР°СЏ С„СѓРЅРєС†РёСЏ
 int evaluation_function(Board* board)
 {
     int checkers_computer = 0;
@@ -976,6 +985,88 @@ int evaluation_function(Board* board)
 };
 
 
+//Р°Р»РіРѕСЂРёС‚Рј РјРёРЅРёРјР°РєСЃР°
+int minMaxAlgorithm(Board* curBoard, int depth) {
+	try {
+		if (depth > MAX_DEPTH || curBoard->isTheEndGame() == -1 || curBoard->isTheEndGame() == 1) {
+            
+            
+			return evaluation_function(curBoard);
+		}
+
+		int bestScore = -99999;
+        int minEval = 99999;
+
+        if (curBoard->currentCell) {
+            std::vector<CellStep> steps = curBoard->getValidEatenStep();
+            for (int step = 0; step < steps.size(); step++) {
+                //СЃРѕР·РґР°РµРј РІРёСЂС‚СѓР°Р»СЊРЅСѓСЋ РґРѕСЃРєСѓ СЃ РІС‹Р±СЂР°РЅРЅС‹Рј С…РѕРґРѕРј
+                Board* newBoard = new Board(curBoard->checkersCell, curBoard->currentCell, curBoard->currentMove, steps[step], curBoard->sdl);
+                int newValue = minMaxAlgorithm(newBoard, depth + 1);
+
+                if (curBoard->currentCell->type == "Black") {
+                    if (newValue > bestScore) {
+                        bestScore = newValue;
+                    }
+                }
+                else if (curBoard->currentCell->type == "White") {
+                    if (newValue < minEval) {
+                        minEval = newValue;
+                    }
+                }
+
+                newBoard->~Board();
+                delete newBoard;
+            }
+        }
+        else {
+
+            //РїСЂРѕР±РµРіР°РµРјСЃСЏ РїРѕ РІСЃРµРј РєР»РµС‚РєР°Рј РґРѕСЃРєРё
+            for (int cellInd = 0; cellInd < curBoard->checkersCell.size(); cellInd++) {
+                //РІС‹Р±РёСЂР°РµРј С‚РѕР»СЊРєРѕ РїРµС€РєРё С‚РµРєСѓС‰РµРіРѕ С†РІРµС‚Р°
+                if (curBoard->checkersCell[cellInd]->type != curBoard->currentMove) {
+                    continue;
+                }
+                //РІС‹Р±РёСЂР°РµРј РїРµС€РєСѓ РєР°Рє С‚РµРєСѓС‰СѓСЋ Рё РёС‰РµРј РґРѕСЃС‚СѓРїРЅС‹Рµ С…РѕРґС‹ 
+                curBoard->currentCell = curBoard->checkersCell[cellInd];
+
+                std::vector<CellStep> steps = curBoard->getAllValidSteps();
+                for (int step = 0; step < steps.size(); step++) {
+                    //СЃРѕР·РґР°РµРј РІРёСЂС‚СѓР°Р»СЊРЅСѓСЋ РґРѕСЃРєСѓ СЃ РІС‹Р±СЂР°РЅРЅС‹Рј С…РѕРґРѕРј
+                    Board* newBoard = new Board(curBoard->checkersCell, curBoard->currentCell, curBoard->currentMove, steps[step], curBoard->sdl);
+                    int newValue = minMaxAlgorithm(newBoard, depth + 1);
+
+                   /* if ((curBoard->currentCell->type == "Black" ? 1 : -1) * newValue > bestScore) {
+                        bestScore = (curBoard->currentCell->type == "Black" ? 1 : -1) * newValue;
+                    }*/
+                    if (curBoard->currentCell->type == "Black") {
+                        if (newValue > bestScore) {
+                            bestScore = newValue;
+                        }
+                    }
+                    else if (curBoard->currentCell->type == "White") {
+                        if (newValue < minEval) {
+                            minEval = newValue;
+                        }
+                    }
+
+                    newBoard->~Board();
+                    delete newBoard;
+                }
+
+            }
+        }
+
+		return curBoard->currentMove == "Black" ? bestScore : minEval;
+	}
+    catch (...) {
+        std::cout << "MinMaxError: " << std::endl;
+    }
+}
+
+
+
+
 int main(int argc, char* argv[]) {
     setlocale(LC_ALL, "Russian");
     Board* board = new Board();
@@ -983,41 +1074,43 @@ int main(int argc, char* argv[]) {
     bool isEnd = false;
     SDL_Event event;
 
-    while (!quit)
-    {
-        //отрисовка доски
-        board->drawBoard();
-        if (board->isTheEndGame() != 0) {
-            std::cout << "конец игры - победели";
-            board->isTheEndGame() == 1 ? std::cout << " белые" : std::cout << " черные";
-            isEnd = true;
-            break;
-        }
+    try {
 
-       
-        while (SDL_PollEvent(&event))
+
+        while (!quit)
         {
-            if (event.type == SDL_QUIT)
-            {
-                quit = true;
+            //РѕС‚СЂРёСЃРѕРІРєР° РґРѕСЃРєРё
+            board->drawBoard();
+            if (board->isTheEndGame() != 0) {
+                std::cout << "ГЄГ®Г­ГҐГ¶ ГЁГЈГ°Г» - ГЇГ®ГЎГҐГ¤ГҐГ«ГЁ";
+                board->isTheEndGame() == 1 ? std::cout << " ГЎГҐГ«Г»ГҐ" : std::cout << " Г·ГҐГ°Г­Г»ГҐ";
+                isEnd = true;
+                break;
             }
-            //событие клик
-            else if (event.type == SDL_MOUSEBUTTONUP) {
-                std::vector<int> curPos = board->sdl->GetClickPosition(event);
-                //цвет выбранного поля совпадает с текущим ходом
-                    if (!board->currentCell && board->checkersCell[curPos[1] * 8 + curPos[0]]->type == board->currentMove) {
+
+
+            while (SDL_PollEvent(&event))
+            {
+                if (event.type == SDL_QUIT)
+                {
+                    quit = true;
+                }
+                //СЃРѕР±С‹С‚РёРµ РєР»РёРє
+                else if (event.type == SDL_MOUSEBUTTONUP) {
+                    std::vector<int> curPos = board->sdl->GetClickPosition(event);
+                    //С†РІРµС‚ РІС‹Р±СЂР°РЅРЅРѕРіРѕ РїРѕР»СЏ СЃРѕРІРїР°РґР°РµС‚ СЃ С‚РµРєСѓС‰РёРј С…РѕРґРѕРј
+                    if (!board->currentCell && board->checkersCell[curPos[1] * 8 + curPos[0]]->type == board->currentMove && board->currentMove == "White") {
                         board->currentCell = board->checkersCell[8 * curPos[1] + curPos[0]];
                     }
-                    else if (board->currentCell) {
-                        std::cout << board->currentCell->isQueen << std::endl;
+                    else if (board->currentCell && board->currentMove == "White") {
                         bool isMadeMove = false;
-                        //если у текущей точки отсутствуют ходы, которые будут поедать другие пешки
+                        //РµСЃР»Рё Сѓ С‚РµРєСѓС‰РµР№ С‚РѕС‡РєРё РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚ С…РѕРґС‹, РєРѕС‚РѕСЂС‹Рµ Р±СѓРґСѓС‚ РїРѕРµРґР°С‚СЊ РґСЂСѓРіРёРµ РїРµС€РєРё
                         if (board->getValidEatenStep().size() == 0) {
                             std::vector<CellStep> accessPosition = board->getValidEmptyStep();
-                            //ищем поле, если оно доступно - делаем ход
+                            //РёС‰РµРј РїРѕР»Рµ, РµСЃР»Рё РѕРЅРѕ РґРѕСЃС‚СѓРїРЅРѕ - РґРµР»Р°РµРј С…РѕРґ
                             for (int i = 0; i < accessPosition.size(); i++) {
                                 if (curPos[0] == accessPosition[i].x && curPos[1] == accessPosition[i].y) {
-                                   
+
                                     board->switchCheckers(board->currentCell, board->checkersCell[curPos[1] * 8 + curPos[0]]);
 
                                     board->currentCell = nullptr;
@@ -1028,10 +1121,10 @@ int main(int argc, char* argv[]) {
                             }
                         }
 
-                        //если у текущей точки есть ходы, которые сьедают пешку
+                        //РµСЃР»Рё Сѓ С‚РµРєСѓС‰РµР№ С‚РѕС‡РєРё РµСЃС‚СЊ С…РѕРґС‹, РєРѕС‚РѕСЂС‹Рµ СЃСЊРµРґР°СЋС‚ РїРµС€РєСѓ
                         else if (board->getValidEatenStep().size() > 0) {
                             std::vector<CellStep> accessPosition = board->getValidEatenStep();
-                            //ищем поле, если оно доступно - делаем ход
+                            //РёС‰РµРј РїРѕР»Рµ, РµСЃР»Рё РѕРЅРѕ РґРѕСЃС‚СѓРїРЅРѕ - РґРµР»Р°РµРј С…РѕРґ
                             for (int i = 0; i < accessPosition.size(); i++) {
                                 if (curPos[0] == accessPosition[i].x && curPos[1] == accessPosition[i].y) {
 
@@ -1040,8 +1133,7 @@ int main(int argc, char* argv[]) {
 
                                     board->switchCheckers(board->currentCell, board->checkersCell[curPos[1] * 8 + curPos[0]]);
                                     board->currentCell = board->checkersCell[curPos[1] * 8 + curPos[0]];
-                                    std::cout << board->currentCell->x << " " << board->currentCell->y << std::endl;
-                                    //если в такой позиции текущая точка не может сьесть еще пешку, то ход переходит другому цвету
+                                    //РµСЃР»Рё РІ С‚Р°РєРѕР№ РїРѕР·РёС†РёРё С‚РµРєСѓС‰Р°СЏ С‚РѕС‡РєР° РЅРµ РјРѕР¶РµС‚ СЃСЊРµСЃС‚СЊ РµС‰Рµ РїРµС€РєСѓ, С‚Рѕ С…РѕРґ РїРµСЂРµС…РѕРґРёС‚ РґСЂСѓРіРѕРјСѓ С†РІРµС‚Сѓ
                                     if (board->getValidEatenStep().size() == 0) {
                                         board->currentCell = nullptr;
                                         board->switchColor();
@@ -1050,17 +1142,124 @@ int main(int argc, char* argv[]) {
                                     break;
                                 }
                             }
-                            //тк если пешка может сьесть другую, она обязана это сделать, выбрать другую нельзя
+                            //С‚Рє РµСЃР»Рё РїРµС€РєР° РјРѕР¶РµС‚ СЃСЊРµСЃС‚СЊ РґСЂСѓРіСѓСЋ, РѕРЅР° РѕР±СЏР·Р°РЅР° СЌС‚Рѕ СЃРґРµР»Р°С‚СЊ, РІС‹Р±СЂР°С‚СЊ РґСЂСѓРіСѓСЋ РЅРµР»СЊР·СЏ
                             continue;
                         }
 
-                        //если просто переключение на другую пешку того что цвета, при условии, что ход не сделан
+                        //РµСЃР»Рё РїСЂРѕСЃС‚Рѕ РїРµСЂРµРєР»СЋС‡РµРЅРёРµ РЅР° РґСЂСѓРіСѓСЋ РїРµС€РєСѓ С‚РѕРіРѕ С‡С‚Рѕ С†РІРµС‚Р°, РїСЂРё СѓСЃР»РѕРІРёРё, С‡С‚Рѕ С…РѕРґ РЅРµ СЃРґРµР»Р°РЅ
                         if (board->checkersCell[curPos[1] * 8 + curPos[0]]->type == board->currentMove && !isMadeMove) {
                             board->currentCell = board->checkersCell[curPos[1] * 8 + curPos[0]];
                         }
                     }
+
+
+                    //==========================================//
+                    //РЅР°С‡РёРЅР°РµС‚СЃСЏ С…РѕРґ Р·Р° С‡РµСЂРЅС‹С…
+                    if (board->currentMove == "Black") {
+
+                        std::cout << "РћС‚СЂР°Р±Р°С‚С‹РІР°РµС‚ РјРёРЅРёРјР°РєСЃ" << std::endl;
+                        //Р»СѓС‡С€Р°СЏ РѕС†РµРЅРєР°
+                        int bestScore = -99999;
+                        int minEval = 99999;
+
+                        //Р»СѓС‡С€РµРіРѕ С…РѕРґР°
+                        CellStep bestStep;
+                        int indexCurCell = -1;
+                        if (board->currentCell && board->currentCell->type == "Black" && board->getValidEatenStep().size()) {
+                            std::vector<CellStep> steps = board->getValidEatenStep();
+                            for (int step = 0; step < steps.size(); step++) {
+                                //СЃРѕР·РґР°РµРј РІРёСЂС‚СѓР°Р»СЊРЅСѓСЋ РґРѕСЃРєСѓ СЃ РІС‹Р±СЂР°РЅРЅС‹Рј С…РѕРґРѕРј
+                                Board* newBoard = new Board(board->checkersCell, board->currentCell, board->currentMove, steps[step], board->sdl);
+                                int newValue = minMaxAlgorithm(newBoard, 1);
+                                std::cout << newValue << " -- ";
+
+                                if (board->currentCell->type == "Black") {
+                                    if (newValue > bestScore) {
+                                        bestScore = newValue;
+                                        bestStep = steps[step];
+                                        indexCurCell = board->currentCell->y * 8 + board->currentCell->x;
+                                    }
+                                }
+                                else if (board->currentCell->type == "White") {
+                                    if (newValue < minEval) {
+                                        minEval = newValue;
+                                        bestStep = steps[step];
+                                        indexCurCell = board->currentCell->y * 8 + board->currentCell->x;
+                                    }
+                                }
+
+                                //if (newValue > bestScore) {
+                                //    //Р·Р°РїРѕРјРёРЅР°РµРј С…РѕРґ Рё С‚РµРєСѓС‰СѓСЋ С‚РѕС‡РєСѓ РїСЂРё СЌС‚РѕРј С…РѕРґРµ
+                                //    bestScore = newValue;
+                                //    bestStep = steps[step];
+                                //    indexCurCell = board->currentCell->y * 8 + board->currentCell->x;
+                                //}
+                                newBoard->~Board();
+                                delete newBoard;
+                            }
+                        }
+
+                        else {
+                            for (int cellInd = 0; cellInd < board->checkersCell.size(); cellInd++) {
+                                //РІС‹Р±РёСЂР°РµРј С‚РѕР»СЊРєРѕ С‡РµСЂРЅСѓСЋ РїРµС€РєСѓ
+                                if (board->checkersCell[cellInd]->type != "Black") {
+                                    continue;
+                                }
+
+                                //РІС‹Р±РёСЂР°РµРј РїРµС€РєСѓ РєР°Рє С‚РµРєСѓС‰СѓСЋ Рё РёС‰РµРј РґРѕСЃС‚СѓРїРЅС‹Рµ С…РѕРґС‹ 
+                                board->currentCell = board->checkersCell[cellInd];
+                                std::vector<CellStep> steps = board->getAllValidSteps();
+                                for (int step = 0; step < steps.size(); step++) {
+                                    //СЃРѕР·РґР°РµРј РІРёСЂС‚СѓР°Р»СЊРЅСѓСЋ РґРѕСЃРєСѓ СЃ РІС‹Р±СЂР°РЅРЅС‹Рј С…РѕРґРѕРј
+                                    Board* newBoard = new Board(board->checkersCell, board->currentCell, board->currentMove, steps[step], board->sdl);
+                                    int newValue = minMaxAlgorithm(newBoard, 1);
+                                    std::cout << newValue << " -- ";
+                                    if (newValue > bestScore) {
+                                        //Р·Р°РїРѕРјРёРЅР°РµРј С…РѕРґ Рё С‚РµРєСѓС‰СѓСЋ С‚РѕС‡РєСѓ РїСЂРё СЌС‚РѕРј С…РѕРґРµ
+                                        bestScore = newValue;
+                                        bestStep = steps[step];
+                                        indexCurCell = cellInd;
+                                        newBoard->printBoard();
+                                        std::cout << "SCORE: " << evaluation_function(newBoard) << std::endl;;
+                                    }
+                                    newBoard->~Board();
+                                    delete newBoard;
+                                }
+                            }
+                        }
+
+                        //РµСЃР»Рё РµСЃС‚СЊ Р»СѓС‡С€РёР№ С…РѕРґ
+                        if (bestStep.x != -1 && bestStep.y != -1 && indexCurCell != -1) {
+                            board->currentCell = board->checkersCell[indexCurCell];
+                            board->switchCheckers(board->currentCell, board->checkersCell[bestStep.y * 8 + bestStep.x]);
+                            board->currentCell = board->checkersCell[bestStep.y * 8 + bestStep.x];
+                            if (bestStep.eatenCell) {
+                                bestStep.eatenCell->type = "Empty";
+                                bestStep.eatenCell->isQueen = false;
+                                if (!board->getValidEatenStep().size()) {
+                                    board->switchColor();
+                                    board->currentCell = nullptr;
+                                }
+                            }
+                            else {
+                                board->switchColor();
+                                board->currentCell = nullptr;
+                            }
+                            
+                        }
+                        else {
+                            std::cout << "Р§РµСЂРЅС‹Рј РЅРµРєСѓРґР° С…РѕРґРёС‚СЊ, РєРѕРЅРµС† РёРіСЂС‹" << std::endl;
+                        }
+
+                        std::cout << "РњРёРЅРёРјР°РєСЃ РѕС‚СЂР°Р±РѕС‚Р°Р»" << std::endl;
+                    }
+                    //==========================================//
+                }
             }
         }
+    }
+    catch (...) {
+        std::cout << "Error in main: "<< std::endl;
     }
 
     return 0;
