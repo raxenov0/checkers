@@ -1,4 +1,4 @@
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -6,7 +6,7 @@
 
 #undef main
 
-int MAX_DEPTH = 5;
+int MAX_DEPTH = 4;
 
 
 class SDL_PRINT {
@@ -160,32 +160,32 @@ public:
     };
 
     Board(std::vector<Cell*> cells, Cell* curCell, std::string currentMove, CellStep step, SDL_PRINT* sdlWrapp, int depth = 3) {
-        
-		try {
-			this->sdl = sdlWrapp;
-			for (int i = 0; i < cells.size(); i++) {
-				Cell* cellPoint = new Cell;
-				cellPoint->isQueen = cells[i]->isQueen;
-				cellPoint->type = cells[i]->type;
-				cellPoint->x = cells[i]->x;
-				cellPoint->y = cells[i]->y;
 
-				this->checkersCell.push_back(cellPoint);
-				if (cellPoint->x == curCell->x && cellPoint->y == curCell->y) {
-					this->currentCell = cellPoint;
-				}
-			}
-			this->currentMove = currentMove;
-           
-			if (this->currentCell && this->checkersCell[step.y * 8 + step.x]) {
+        try {
+            this->sdl = sdlWrapp;
+            for (int i = 0; i < cells.size(); i++) {
+                Cell* cellPoint = new Cell;
+                cellPoint->isQueen = cells[i]->isQueen;
+                cellPoint->type = cells[i]->type;
+                cellPoint->x = cells[i]->x;
+                cellPoint->y = cells[i]->y;
+
+                this->checkersCell.push_back(cellPoint);
+                if (cellPoint->x == curCell->x && cellPoint->y == curCell->y) {
+                    this->currentCell = cellPoint;
+                }
+            }
+            this->currentMove = currentMove;
+
+            if (this->currentCell && this->checkersCell[step.y * 8 + step.x]) {
                 this->switchCheckers(this->currentCell, this->checkersCell[step.y * 8 + step.x]);
-				if (step.eatenCell) {
+                if (step.eatenCell) {
                     /* std::cout << "Eat: " << step.eatenCell->x << ":" << step.eatenCell->y << std::endl;*/
-					this->checkersCell[step.eatenCell->y * 8 + step.eatenCell->x]->type = "Empty";
-					this->checkersCell[step.eatenCell->y * 8 + step.eatenCell->x]->isQueen = false;
+                    this->checkersCell[step.eatenCell->y * 8 + step.eatenCell->x]->type = "Empty";
+                    this->checkersCell[step.eatenCell->y * 8 + step.eatenCell->x]->isQueen = false;
                     this->currentCell = this->checkersCell[step.y * 8 + step.x];
-                    
-                    if (this->getValidEatenStep().size() == 0 ) {
+
+                    if (this->getValidEatenStep().size() == 0) {
 
                         this->switchColor();
                         this->currentCell = nullptr;
@@ -195,11 +195,11 @@ public:
                     this->switchColor();
                     this->currentCell = nullptr;
                 }
-			}
-            
-		}
-        catch(...) {
-            std::cout << "ошибка в конструкторе: "  << std::endl;
+            }
+
+        }
+        catch (...) {
+            std::cout << "ошибка в конструкторе: " << std::endl;
         }
     }
 
@@ -209,29 +209,29 @@ public:
     }
 
     void printBoard() {
-            for (int i = 0; i < this->checkersCell.size(); i++) {
-                if (i % 8 == 0) {
-                    std::cout << std::endl;
-                }
-                char sym = '#';
-                if (this->checkersCell[i]->type == "Black") {
-                    if (this->checkersCell[i]->isQueen) {
-                        sym = 'B';
-                    }
-                    else
-                        sym = 'b';
-                }
-                else if (this->checkersCell[i]->type == "White") {
-                    if (this->checkersCell[i]->isQueen) {
-                        sym = 'W';
-                    }
-                    else
-                        sym = 'w';
-                }
-                std::cout << sym;
+        for (int i = 0; i < this->checkersCell.size(); i++) {
+            if (i % 8 == 0) {
+                std::cout << std::endl;
             }
-            std::cout << std::endl;
-            std::cout << "==================================" << std::endl;
+            char sym = '#';
+            if (this->checkersCell[i]->type == "Black") {
+                if (this->checkersCell[i]->isQueen) {
+                    sym = 'B';
+                }
+                else
+                    sym = 'b';
+            }
+            else if (this->checkersCell[i]->type == "White") {
+                if (this->checkersCell[i]->isQueen) {
+                    sym = 'W';
+                }
+                else
+                    sym = 'w';
+            }
+            std::cout << sym;
+        }
+        std::cout << std::endl;
+        std::cout << "==================================" << std::endl;
     }
 
     void switchColor() {
@@ -248,7 +248,7 @@ public:
         int black = 0;
 
         int accessSteps = 0;
-        
+
         for (int i = 0; i < this->checkersCell.size(); i++) {
             if (this->checkersCell[i]->type == "Black") {
                 black++;
@@ -291,6 +291,37 @@ public:
         }
     }
 
+    bool isEatenCheckersExist() {
+        Cell* temp = this->currentCell;
+        int count = 0;
+        if (this->currentCell) {
+            for (int i = 0; i < this->checkersCell.size(); i++) {
+                if (this->checkersCell[i]->type != this->currentMove) {
+                    continue;
+                }
+
+                this->currentCell = this->checkersCell[i];
+                int steps = this->getValidEatenStep().size() > 0;
+                if ( steps) {
+                    count = 1;
+                    break;
+                }
+            }
+            this->currentCell = temp;
+            temp = nullptr;
+            delete temp;
+
+            if (count > 0) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            return false;
+        }
+    }
 
     void switchCheckers(Cell* first, Cell* second) {
         Cell temp;
@@ -986,11 +1017,37 @@ public:
         return validSteps;
     }
 
-    std::vector<CellStep> getAllValidSteps() {
+    std::vector<CellStep> getAllValidSteps(int depth = 3) {
         std::vector<CellStep> emptySteps = this->getValidEmptyStep();
         std::vector<CellStep> eatenSteps = this->getValidEatenStep();
-        std::vector<CellStep> allSteps = eatenSteps.size() > 0 ? eatenSteps : emptySteps;
-        return allSteps;
+        
+        if (depth == 1) {
+            std::cout << this->isEatenCheckersExist() << std::endl;
+        }
+        if (eatenSteps.size() > 0) {
+            return eatenSteps;
+        }
+        else {
+            if (this->isEatenCheckersExist()) {
+                std::vector<CellStep> allSteps;
+                return allSteps;
+            }
+            else {
+                return emptySteps;
+            }
+        }
+            
+            //= eatenSteps.size() > 0
+           /* ?
+            eatenSteps
+            :
+            this->isEatenCheckersExist()
+            ?
+            emptySteps
+            :
+            return null;
+        ;*/
+       /* return allSteps;*/
     }
 };
 
@@ -1014,57 +1071,39 @@ int evaluation_function(Board* board)
 
 
 //алгоритм минимакса
-int minMaxAlgorithm(Board* curBoard, int depth) {
-    if (depth == 1) {
-        std::cout << curBoard->currentMove << std::endl;
-    }
-	try {
-		if (depth >= MAX_DEPTH || curBoard->isTheEndGame() == -1 || curBoard->isTheEndGame() == 1) {
-            
-            if ((curBoard->isTheEndGame() == -1 || curBoard->isTheEndGame() == 1) && depth == 1) {
-                 std::cout << evaluation_function(curBoard) << " -> " <<  curBoard->currentMove << std::endl;
-            }
-               
-			return evaluation_function(curBoard);
-		}
+int minMaxAlgorithm(Board* curBoard, int depth, int alpha, int beta) {
+    
+    try {
+        if (depth >= MAX_DEPTH || curBoard->isTheEndGame() == -1 || curBoard->isTheEndGame() == 1) {
 
-		int bestScore = -99999;
+            /*if ((curBoard->isTheEndGame() == -1 || curBoard->isTheEndGame() == 1) && depth == 1) {
+                std::cout << evaluation_function(curBoard) << " -> " << curBoard->currentMove << std::endl;
+            }*/
+
+            return evaluation_function(curBoard);
+        }
+
+        int bestScore = -99999;
         int minEval = 99999;
 
         if (curBoard->currentCell) {
             std::vector<CellStep> steps = curBoard->getValidEatenStep();
             for (int step = 0; step < steps.size(); step++) {
                 //создаем виртуальную доску с выбранным ходом
-                Board* newBoard = new Board(curBoard->checkersCell, curBoard->currentCell, curBoard->currentMove, steps[step], curBoard->sdl,1);
-                int newValue = minMaxAlgorithm(newBoard, depth + 1);
-
-                /*if (curBoard->currentCell->type == "Black") {
-                    if (newValue > bestScore) {
-                        bestScore = newValue;
-                    }
-                }
-                else if (curBoard->currentCell->type == "White") {
-                    if (newValue < minEval) {
-                        minEval = newValue;
-                    }
-                }*/
-
-                //если есть текущая точка после хода, значит
-                   // пешка сьедена и есть ход который поедает еще дргие пешки
-                   //значит мы можем определить кто сходил - черный или белый
-
-                /*if (depth == 1) {
-                    std::cout << newValue << std::endl;
-                    std::cout << newBoard->currentMove << std::endl;
-                }*/
+                Board* newBoard = new Board(curBoard->checkersCell, curBoard->currentCell, curBoard->currentMove, steps[step], curBoard->sdl, 1);
+                int newValue = minMaxAlgorithm(newBoard, depth + 1, alpha, beta);
 
                 if (curBoard->currentCell) {
                     if (curBoard->currentCell->type == "Black") {
+                        alpha > newValue ? alpha : (alpha = newValue);
+
                         if (newValue > bestScore) {
                             bestScore = newValue;
                         }
                     }
                     else if (curBoard->currentCell->type == "White") {
+                        beta < newValue ? beta : (beta = newValue);
+
                         if (newValue < minEval) {
                             minEval = newValue;
                         }
@@ -1074,11 +1113,15 @@ int minMaxAlgorithm(Board* curBoard, int depth) {
                 // значит нужно оценивание инверсировать
                 else {
                     if (curBoard->currentMove == "Black") {
+                        beta < newValue ? beta : (beta = newValue);
+
                         if (newValue < minEval) {
                             minEval = newValue;
                         }
                     }
                     else if (curBoard->currentMove == "White") {
+                        alpha > newValue ? alpha : (alpha = newValue);
+
                         if (newValue > bestScore) {
                             bestScore = newValue;
                         }
@@ -1088,6 +1131,10 @@ int minMaxAlgorithm(Board* curBoard, int depth) {
 
                 newBoard->~Board();
                 delete newBoard;
+
+                if (beta <= alpha) {
+                    break;
+                }
             }
         }
         else {
@@ -1104,14 +1151,8 @@ int minMaxAlgorithm(Board* curBoard, int depth) {
                 std::vector<CellStep> steps = curBoard->getAllValidSteps();
                 for (int step = 0; step < steps.size(); step++) {
                     //создаем виртуальную доску с выбранным ходом
-                    Board* newBoard = new Board(curBoard->checkersCell, curBoard->currentCell, curBoard->currentMove, steps[step], curBoard->sdl,1);
-                    int newValue = minMaxAlgorithm(newBoard, depth + 1);
-
-
-                    /*if (depth == 1) {
-                        std::cout << newValue << std::endl;
-                        std::cout << newBoard->currentMove << std::endl;
-                    }*/
+                    Board* newBoard = new Board(curBoard->checkersCell, curBoard->currentCell, curBoard->currentMove, steps[step], curBoard->sdl, 1);
+                    int newValue = minMaxAlgorithm(newBoard, depth + 1, alpha, beta);
 
                     //если есть текущая точка после хода, значит
                     // пешка сьедена и есть ход который поедает еще дргие пешки
@@ -1120,11 +1161,15 @@ int minMaxAlgorithm(Board* curBoard, int depth) {
 
                     if (curBoard->currentCell) {
                         if (curBoard->currentCell->type == "Black") {
+                            alpha > newValue ? alpha : (alpha = newValue);
+
                             if (newValue > bestScore) {
                                 bestScore = newValue;
                             }
                         }
                         else if (curBoard->currentCell->type == "White") {
+                            beta < newValue ? beta : (beta = newValue);
+
                             if (newValue < minEval) {
                                 minEval = newValue;
                             }
@@ -1133,28 +1178,37 @@ int minMaxAlgorithm(Board* curBoard, int depth) {
                     // в этом случае, после хода текущей точки нет -> текущей ход перешел на другую сторону
                     // значит нужно оценивание инверсировать
                     else {
-                        if (curBoard->currentMove== "Black") {
+                        if (curBoard->currentMove == "Black") {
+                            beta < newValue ? beta : (beta = newValue);
+
                             if (newValue < minEval) {
                                 minEval = newValue;
                             }
                         }
                         else if (curBoard->currentMove == "White") {
+                            alpha > newValue ? alpha : (alpha = newValue);
                             if (newValue > bestScore) {
                                 bestScore = newValue;
                             }
                         }
                     }
-                    
+
 
                     newBoard->~Board();
                     delete newBoard;
+
+                    if (beta <= alpha) {
+                        
+                        break;
+                    }
                 }
 
             }
         }
 
-		return curBoard->currentMove == "Black" ? bestScore : minEval;
-	}
+
+        return curBoard->currentMove == "Black" ? bestScore : minEval;
+    }
     catch (...) {
         std::cout << "MinMaxError: " << std::endl;
     }
@@ -1203,20 +1257,20 @@ int main(int argc, char* argv[]) {
                 }
                 //событие клик
                 else if (event.type == SDL_MOUSEBUTTONUP) {
-                    
+
                     std::vector<int> curPos = board->sdl->GetClickPosition(event);
                     //цвет выбранного поля совпадает с текущим ходом
                     if (!board->currentCell && board->checkersCell[curPos[1] * 8 + curPos[0]]->type == board->currentMove && board->currentMove == "White") {
                         board->currentCell = board->checkersCell[8 * curPos[1] + curPos[0]];
                     }
                     else if (board->currentCell && board->currentMove == "White") {
-                       
+
                         bool isMadeMove = false;
                         //если у текущей точки отсутствуют ходы, которые будут поедать другие пешки
                         if (board->getValidEatenStep().size() == 0) {
                             std::vector<CellStep> accessPosition = board->getValidEmptyStep();
                             //ищем поле, если оно доступно - делаем ход
-                           
+
                             for (int i = 0; i < accessPosition.size(); i++) {
                                 if (curPos[0] == accessPosition[i].x && curPos[1] == accessPosition[i].y) {
 
@@ -1228,7 +1282,7 @@ int main(int argc, char* argv[]) {
                                     break;
                                 }
                             }
-                           
+
                         }
 
                         //если у текущей точки есть ходы, которые сьедают пешку
@@ -1280,7 +1334,7 @@ int main(int argc, char* argv[]) {
                             for (int step = 0; step < steps.size(); step++) {
                                 //создаем виртуальную доску с выбранным ходом
                                 Board* newBoard = new Board(board->checkersCell, board->currentCell, board->currentMove, steps[step], board->sdl, 1);
-                                int newValue = minMaxAlgorithm(newBoard, 1);
+                                int newValue = minMaxAlgorithm(newBoard, 1, -999999999, 999999999);
 
                                 if (board->currentMove == "Black") {
                                     if (newValue > bestScore) {
@@ -1317,13 +1371,14 @@ int main(int argc, char* argv[]) {
 
                                 //выбираем пешку как текущую и ищем доступные ходы 
                                 board->currentCell = board->checkersCell[cellInd];
-                                std::vector<CellStep> steps = board->getAllValidSteps();
+                                std::vector<CellStep> steps = board->getAllValidSteps(1);
+                                if (steps.size() != 0) {
+                                    std::cout << steps[0].x << ":" << steps[0].y << std::endl;
+                                }
                                 for (int step = 0; step < steps.size(); step++) {
                                     //создаем виртуальную доску с выбранным ходом
                                     Board* newBoard = new Board(board->checkersCell, board->currentCell, board->currentMove, steps[step], board->sdl);
-                                    int newValue = minMaxAlgorithm(newBoard, 1);
-                                    std::cout << newValue << std::endl;
-                                    std::cout << bestScore << " " << minEval << std::endl;
+                                    int newValue = minMaxAlgorithm(newBoard, 1, -999999999, 999999999);
                                     if (board->currentMove == "Black") {
                                         if (newValue > bestScore) {
                                             //запоминаем ход и текущую точку при этом ходе
@@ -1336,9 +1391,9 @@ int main(int argc, char* argv[]) {
                                     }
                                     else if (board->currentMove == "White") {
                                         if (newValue < minEval) {
-                                             minEval = newValue;
-                                             bestStep = steps[step];
-                                             indexCurCell = board->currentCell->y * 8 + board->currentCell->x;
+                                            minEval = newValue;
+                                            bestStep = steps[step];
+                                            indexCurCell = board->currentCell->y * 8 + board->currentCell->x;
                                         }
                                     }
 
@@ -1365,7 +1420,7 @@ int main(int argc, char* argv[]) {
                                 board->switchColor();
                                 board->currentCell = nullptr;
                             }
-                            
+
                         }
                         else {
                             std::cout << "Черным некуда ходить, конец игры" << std::endl;
@@ -1379,7 +1434,7 @@ int main(int argc, char* argv[]) {
         }
     }
     catch (...) {
-        std::cout << "Error in main: "<< std::endl;
+        std::cout << "Error in main: " << std::endl;
     }
 
     return 0;
